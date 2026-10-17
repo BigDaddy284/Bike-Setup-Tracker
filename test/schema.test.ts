@@ -48,6 +48,19 @@ describe('Android backup compatibility', () => {
     expect(backup.currentTheme).toBe('dark');
   });
 
+  it('reads backups from the older Suspension Tracker apps into Profile 1', () => {
+    const legacy = {
+      bikes: [{ id: 'b', name: 'YZ250F' }],
+      tracks: [{ id: 't', name: 'Hawkstone', activeCondition: 'Wet' }],
+      settings: [{ bikeId: 'b', trackId: 't', condition: 'Wet', settings: { frontCompression: 10, forkHeight: 5 } }],
+      selectedBikeId: 'b', selectedTrackId: 't', currentTrackCondition: 'Wet', isSidebarCollapsed: false, currentTheme: 'light',
+    };
+    const backup = parseBackup(legacy, defaults);
+    expect(backup.settings[0].profileId).toBe(1);
+    expect(backup.settings[0].settings.frontCompression).toBe(10);
+    expect(backup.selectedProfileId).toBe(1);
+  });
+
   it('rejects files that are not backups', () => {
     expect(() => parseBackup([1, 2], defaults)).toThrow();
     expect(() => parseBackup(null, defaults)).toThrow();

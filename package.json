@@ -3,6 +3,12 @@
   "productName": "Bike Setup Tracker",
   "version": "2.0.0",
   "description": "Windows desktop version of Bike Setup Tracker. Reads and writes the same backup files as the Android app.",
+  "author": "BigDaddy284 (GizMX Racing Development)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BigDaddy284/Bike-Setup-Tracker.git"
+  },
   "private": true,
   "main": "dist-electron/main.js",
   "scripts": {
@@ -44,10 +50,10 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "artifactName": "${productName}-Setup-${version}.${ext}"
+      "artifactName": "Bike-Setup-Tracker-Setup-${version}.${ext}"
     },
     "portable": {
-      "artifactName": "${productName}-${version}-portable.${ext}"
+      "artifactName": "Bike-Setup-Tracker-${version}-portable.${ext}"
     },
     "publish": null
   },
@@ -60,6 +66,5 @@
     "typescript": "~5.8",
     "vite": "^6.4.4",
     "vitest": "^3.2.7"
-  },
-  "author": "GizMx Race Development"
+  }
 }
