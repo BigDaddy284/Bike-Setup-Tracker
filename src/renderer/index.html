@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:">
+    <title>Bike Setup Tracker</title>
+</head>
+<body>
+    <header>
+        <div class="logo"></div>
+        <div class="header-title-wrapper">
+            <h1>Bike Setup Tracker</h1>
+        </div>
+        <div id="header-actions-container" class="header-actions-container"></div>
+    </header>
+    <main class="app-container">
+        <aside class="sidebar" id="sidebar"></aside>
+        <section class="content-area" id="content-area"></section>
+    </main>
+    <div id="modal-container"></div>
+    <div id="toast-container" aria-live="assertive" aria-atomic="true"></div>
+    <script type="module" src="./main.ts"></script>
+</body>
+</html>

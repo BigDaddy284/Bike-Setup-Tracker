@@ -1,0 +1,77 @@
+{
+  "bikes": [
+    {
+      "id": "default-bike-1",
+      "name": "Stark Varg MX 80HP 2025"
+    },
+    {
+      "id": "mbx1k2abc9xyz",
+      "name": "KTM 450 SX-F"
+    }
+  ],
+  "tracks": [
+    {
+      "id": "default-track-6",
+      "name": "Base Bike Settings",
+      "activeCondition": "Dry"
+    },
+    {
+      "id": "default-track-5",
+      "name": "Mildenhall MX",
+      "mapLink": "https://maps.app.goo.gl/gNW6HGapgmNHfHWu9",
+      "activeCondition": "Wet"
+    },
+    {
+      "id": "default-track-4",
+      "name": "Moto 101",
+      "mapLink": "https://maps.app.goo.gl/FJtmW9fTsUYjV8QPA",
+      "activeCondition": "Dry"
+    }
+  ],
+  "settings": [
+    {
+      "bikeId": "default-bike-1",
+      "trackId": "default-track-5",
+      "condition": "Wet",
+      "profileId": 2,
+      "settings": {
+        "frontCompression": 12,
+        "frontRebound": 14,
+        "frontAirPressure": 0,
+        "rearLowSpeedCompression": 10,
+        "rearHighSpeedCompression": 2,
+        "rearLowSpeedRebound": 11,
+        "rearHighSpeedRebound": 0,
+        "frontTyrePressure": 12,
+        "rearTyrePressure": 11,
+        "forkHeight": 4.5,
+        "notes": "Sand ruts after lap 3, two clicks softer on comp."
+      }
+    },
+    {
+      "bikeId": "mbx1k2abc9xyz",
+      "trackId": "default-track-4",
+      "condition": "Dry",
+      "profileId": 1,
+      "settings": {
+        "frontCompression": 15,
+        "frontRebound": 15,
+        "frontAirPressure": 155,
+        "rearLowSpeedCompression": 12,
+        "rearHighSpeedCompression": 1,
+        "rearLowSpeedRebound": 13,
+        "rearHighSpeedRebound": 1,
+        "frontTyrePressure": 13,
+        "rearTyrePressure": 13,
+        "forkHeight": 5,
+        "notes": ""
+      }
+    }
+  ],
+  "selectedBikeId": "default-bike-1",
+  "selectedTrackId": "default-track-5",
+  "currentTrackCondition": "Wet",
+  "selectedProfileId": 2,
+  "isSidebarCollapsed": false,
+  "currentTheme": "dark"
+}

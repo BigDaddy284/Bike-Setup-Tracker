@@ -1,53 +1,16 @@
+import {
+  Bike, Track, SuspensionSettingValues, SuspensionSetting, BackupFile,
+  LOCAL_STORAGE_KEY, MAX_BIKES, MAX_TRACKS, MAX_NOTES_LENGTH,
+  SUSPENSION_SETTING_MAX_VALUES, DEFAULT_SUSPENSION_SETTINGS,
+  generateId, sortByName, isValidURL,
+  normalizeBike, normalizeTrack, normalizeSetting,
+  parseBackup, serializeBackup, backupFileName,
+} from '../shared/schema';
 
+// Data types and validation live in ../shared/schema.ts so the backup format
+// stays identical to the Android app. Only UI state is declared here.
 
-// Capacitor specific imports
-import { Capacitor } from '@capacitor/core';
-import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
-
-// No imports from @google/genai needed for this UI-focused app.
-
-interface Bike {
-  id: string;
-  name: string;
-}
-
-interface Track {
-  id:string;
-  name: string;
-  mapLink?: string;
-  activeCondition: 'Dry' | 'Wet'; // New field for badge
-}
-
-interface SuspensionSettingValues {
-  frontCompression?: number;
-  frontRebound?: number;
-  frontAirPressure?: number;
-  rearLowSpeedCompression?: number;
-  rearHighSpeedCompression?: number; // turns - now integer
-  rearLowSpeedRebound?: number;
-  rearHighSpeedRebound?: number;
-  frontTyrePressure?: number;
-  rearTyrePressure?: number;
-  forkHeight?: number; // mm past top clamp, now with 1 decimal place
-  notes?: string; // Added notes field
-}
-
-interface SuspensionSetting {
-  bikeId: string;
-  trackId: string;
-  condition: 'Dry' | 'Wet';
-  profileId: 1 | 2 | 3; // Added profile ID
-  settings: SuspensionSettingValues;
-}
-
-interface AppState {
-  bikes: Bike[];
-  tracks: Track[];
-  settings: SuspensionSetting[];
-  selectedBikeId: string | null;
-  selectedTrackId: string | null;
-  currentTrackCondition: 'Dry' | 'Wet';
-  selectedProfileId: 1 | 2 | 3; // Added selected profile
+interface AppState extends BackupFile {
   hasUnsavedSettingsChanges: boolean;
   stagedSettingsBeforeEdit: SuspensionSettingValues | null; // To store settings before they are changed
   // Modal states
@@ -68,8 +31,6 @@ interface AppState {
   importSourceProfileId: 1 | 2 | 3; // Added import source profile
   importSetupModalInfoMessage: string;
   isImportSetupActionable: boolean;
-  // Sidebar state
-  isSidebarCollapsed: boolean;
   // Confirmation Modal State
   showConfirmationModal: boolean;
   confirmationModalTitle: string;
@@ -81,36 +42,7 @@ interface AppState {
   confirmationModalDiscardText: string; // Text for the discard button
   // App Actions Menu State
   isAppActionsMenuOpen: boolean;
-  // Theme State
-  currentTheme: 'dark' | 'light';
 }
-
-const LOCAL_STORAGE_KEY = 'suspensionTrackerData_v2_profiles_notes'; // Updated key
-const MAX_BIKES = 50;
-const MAX_TRACKS = 100;
-const MAX_NOTES_LENGTH = 1000;
-
-const SUSPENSION_SETTING_MAX_VALUES: Partial<Record<keyof Omit<SuspensionSettingValues, 'notes'>, number>> = {
-  frontCompression: 40,
-  frontRebound: 40,
-  frontAirPressure: 200,
-  rearLowSpeedCompression: 40,
-  rearHighSpeedCompression: 40,
-  rearLowSpeedRebound: 40,
-  rearHighSpeedRebound: 40,
-  frontTyrePressure: 30,
-  rearTyrePressure: 30,
-  forkHeight: 50, // Max 50.0 mm
-};
-
-const DEFAULT_SUSPENSION_SETTINGS: SuspensionSettingValues = {
-    frontCompression: 0, frontRebound: 0, frontAirPressure: 0,
-    rearLowSpeedCompression: 0, rearHighSpeedCompression: 0,
-    rearLowSpeedRebound: 0, rearHighSpeedRebound: 0,
-    frontTyrePressure: 0, rearTyrePressure: 0,
-    forkHeight: 0.0,
-    notes: '', // Default empty notes
-};
 
 
 let appState: AppState;
@@ -148,11 +80,6 @@ let holdState: HoldState = {
   repeatTimeoutId: null,
   repeatCount: 0,
 };
-
-// Helper function to sort items by name (case-insensitive)
-function sortByName<T extends { name: string }>(items: T[]): T[] {
-  return items.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
-}
 
 
 function showToast(message: string, type: 'info' | 'success' | 'error' = 'info', duration: number = 4000) {
@@ -261,10 +188,6 @@ function getDefaultAppState(): AppState {
   };
 }
 
-function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).substring(2);
-}
-
 function loadStateFromLocalStorage(): AppState {
   const storedState = localStorage.getItem(LOCAL_STORAGE_KEY);
   const defaultState = getDefaultAppState();
@@ -287,60 +210,11 @@ function loadStateFromLocalStorage(): AppState {
         effectiveState.selectedProfileId = [1, 2, 3].includes(parsedState.selectedProfileId) ? parsedState.selectedProfileId : 1;
 
 
-        effectiveState.bikes = Array.isArray(parsedState.bikes) ? sortByName(parsedState.bikes.map((b: any) => ({ id: b.id || generateId(), name: String(b.name || 'Unnamed Bike').slice(0,50) }))) : defaultState.bikes;
-        effectiveState.tracks = Array.isArray(parsedState.tracks) ? sortByName(parsedState.tracks.map((track: any) => ({
-            id: track.id || generateId(),
-            name: String(track.name || 'Unnamed Track').slice(0,50),
-            mapLink: typeof track.mapLink === 'string' && isValidURL(track.mapLink) ? track.mapLink : undefined,
-            activeCondition: track.activeCondition && ['Dry', 'Wet'].includes(track.activeCondition) ? track.activeCondition : 'Dry'
-        }))) : defaultState.tracks;
-
-        if (Array.isArray(parsedState.settings)) {
-            effectiveState.settings = parsedState.settings
-                .filter((s: any) => typeof s === 'object' && s !== null)
-                .map((s: any) => {
-                    const existingSubSettings = (typeof s.settings === 'object' && s.settings !== null) ? s.settings : {};
-                    const validatedSettings: SuspensionSettingValues = {};
-                    (Object.keys(DEFAULT_SUSPENSION_SETTINGS) as Array<keyof SuspensionSettingValues>).forEach(key => {
-                        if (key === 'notes') {
-                            validatedSettings.notes = typeof existingSubSettings.notes === 'string' ? existingSubSettings.notes.slice(0, MAX_NOTES_LENGTH) : '';
-                            return;
-                        }
-                        const rawValue = existingSubSettings[key] ?? DEFAULT_SUSPENSION_SETTINGS[key] ?? (key === 'forkHeight' ? 0.0 : 0);
-                        const maxValue = SUSPENSION_SETTING_MAX_VALUES[key as keyof Omit<SuspensionSettingValues, 'notes'>];
-                        let numericValue: number;
-
-                        if (key === 'forkHeight') {
-                            numericValue = parseFloat(String(rawValue));
-                        } else {
-                            numericValue = parseInt(String(rawValue), 10);
-                        }
-
-                        if (isNaN(numericValue)) {
-                            numericValue = (DEFAULT_SUSPENSION_SETTINGS[key] as number) ?? (key === 'forkHeight' ? 0.0 : 0);
-                        }
-
-                        if (maxValue !== undefined) {
-                            numericValue = Math.min(Math.max(0, numericValue), maxValue);
-                        } else {
-                            numericValue = Math.max(0, numericValue);
-                        }
-                        
-                        validatedSettings[key] = numericValue;
-                    });
-                    const profileId = [1,2,3].includes(s.profileId) ? s.profileId : 1;
-
-                    return {
-                        bikeId: s.bikeId || generateId(),
-                        trackId: s.trackId || generateId(),
-                        condition: s.condition && ['Dry', 'Wet'].includes(s.condition) ? s.condition : 'Dry',
-                        profileId: profileId as 1 | 2 | 3,
-                        settings: validatedSettings
-                    };
-                });
-        } else {
-            effectiveState.settings = defaultState.settings;
-        }
+        effectiveState.bikes = Array.isArray(parsedState.bikes) ? sortByName(parsedState.bikes.map(normalizeBike)) : defaultState.bikes;
+        effectiveState.tracks = Array.isArray(parsedState.tracks) ? sortByName(parsedState.tracks.map(normalizeTrack)) : defaultState.tracks;
+        effectiveState.settings = Array.isArray(parsedState.settings)
+            ? parsedState.settings.filter((s: any) => typeof s === 'object' && s !== null).map(normalizeSetting)
+            : defaultState.settings;
 
         effectiveState.showNewBikeModal = false;
         effectiveState.showNewTrackModal = false;
@@ -415,17 +289,6 @@ function handleThemeToggle() {
     renderHeaderActionsMenu();
 }
 
-
-function isValidURL(string: string): boolean {
-  if (!string || string.trim() === '') return true;
-  try {
-    const urlToTest = string.startsWith('www.') ? `http://${string}` : string;
-    new URL(urlToTest);
-    return true;
-  } catch (_) {
-    return false;
-  }
-}
 
 function _closeModalWithAnimation(modalId: string, onClosed: () => void) {
     const modalEl = document.getElementById(modalId);
@@ -2059,161 +1922,49 @@ function renderHeaderActionsMenu() {
 }
 
 function handleImportData() {
-    confirmAndProceed("importing data (all current data will be overwritten and unsaved changes lost)", () => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.json';
-        input.onchange = async (e) => {
-            const file = (e.target as HTMLInputElement).files?.[0];
-            if (file) {
-                try {
-                    const text = await file.text();
-                    const importedRawState = JSON.parse(text);
-
-                    const defaultValues = getDefaultAppState();
-                    const validatedState: AppState = { ...defaultValues };
-
-                    let importedBikes: Bike[] = Array.isArray(importedRawState.bikes) ?
-                        importedRawState.bikes.map((b: any) => ({
-                            id: b.id || generateId(),
-                            name: String(b.name || 'Unnamed Bike').slice(0,50)
-                        } as Bike))
-                        : defaultValues.bikes;
-                    validatedState.bikes = sortByName(importedBikes).slice(0, MAX_BIKES);
-
-                    let importedTracks: Track[] = Array.isArray(importedRawState.tracks) ?
-                        importedRawState.tracks.map((t: any) => ({
-                            id: t.id || generateId(),
-                            name: String(t.name || 'Unnamed Track').slice(0,50),
-                            mapLink: typeof t.mapLink === 'string' && isValidURL(t.mapLink) ? t.mapLink : undefined,
-                            activeCondition: ['Dry', 'Wet'].includes(t.activeCondition) ? t.activeCondition : 'Dry'
-                        } as Track))
-                        : defaultValues.tracks;
-                    validatedState.tracks = sortByName(importedTracks).slice(0, MAX_TRACKS);
-
-                    validatedState.settings = Array.isArray(importedRawState.settings) ? importedRawState.settings.map((s: any) => {
-                        const settingsValues: SuspensionSettingValues = { ...DEFAULT_SUSPENSION_SETTINGS }; 
-                        if (s.settings && typeof s.settings === 'object') {
-                            for (const key of Object.keys(settingsValues) as Array<keyof SuspensionSettingValues>) {
-                                if (key === 'notes') {
-                                    settingsValues.notes = typeof s.settings.notes === 'string' ? s.settings.notes.slice(0, MAX_NOTES_LENGTH) : '';
-                                    continue;
-                                }
-                                const rawValue = s.settings[key] ?? settingsValues[key] ?? (key === 'forkHeight' ? 0.0 : 0);
-                                const maxVal = SUSPENSION_SETTING_MAX_VALUES[key as keyof Omit<SuspensionSettingValues, 'notes'>];
-                                let numVal: number;
-
-                                if (key === 'forkHeight') {
-                                    numVal = parseFloat(String(rawValue));
-                                } else {
-                                    numVal = parseInt(String(rawValue), 10);
-                                }
-
-                                if (isNaN(numVal)) {
-                                    numVal = (DEFAULT_SUSPENSION_SETTINGS[key] as number) ?? (key === 'forkHeight' ? 0.0 : 0);
-                                }
-                                if (maxVal !== undefined) {
-                                    numVal = Math.min(Math.max(0, numVal), maxVal);
-                                } else {
-                                    numVal = Math.max(0, numVal);
-                                }
-                                settingsValues[key] = numVal; 
-                            }
-                        }
-                        const profileId = [1,2,3].includes(s.profileId) ? s.profileId : 1;
-                        return {
-                            bikeId: s.bikeId,
-                            trackId: s.trackId,
-                            condition: ['Dry', 'Wet'].includes(s.condition) ? s.condition : 'Dry',
-                            profileId: profileId as 1 | 2 | 3,
-                            settings: settingsValues
-                        };
-                    }).filter((s: SuspensionSetting) =>
-                        validatedState.bikes.some(b => b.id === s.bikeId) &&
-                        validatedState.tracks.some(t => t.id === s.trackId)
-                    )
-                    : defaultValues.settings;
-
-                    validatedState.selectedBikeId = validatedState.bikes.some(b => b.id === importedRawState.selectedBikeId) ? importedRawState.selectedBikeId : (validatedState.bikes[0]?.id || null);
-                    validatedState.selectedTrackId = validatedState.tracks.some(t => t.id === importedRawState.selectedTrackId) ? importedRawState.selectedTrackId : (validatedState.tracks[0]?.id || null);
-                    
-                    const selectedTrackObj = validatedState.tracks.find(t => t.id === validatedState.selectedTrackId);
-                    validatedState.currentTrackCondition = selectedTrackObj ? selectedTrackObj.activeCondition : 'Dry';
-                    validatedState.selectedProfileId = [1,2,3].includes(importedRawState.selectedProfileId) ? importedRawState.selectedProfileId : 1;
-
-
-                    validatedState.currentTheme = ['light', 'dark'].includes(importedRawState.currentTheme) ? importedRawState.currentTheme : defaultValues.currentTheme;
-                    validatedState.isSidebarCollapsed = typeof importedRawState.isSidebarCollapsed === 'boolean' ? importedRawState.isSidebarCollapsed : defaultValues.isSidebarCollapsed;
-
-                    validatedState.hasUnsavedSettingsChanges = false;
-                    validatedState.stagedSettingsBeforeEdit = null;
-
-                    appState = validatedState;
-
-                    applyCurrentTheme();
-                    saveStateToLocalStorage();
-                    render();
-                    showToast("Data imported successfully!", "success");
-
-                } catch (err) {
-                    console.error("Error importing data:", err);
-                    showToast("Error importing data. File might be corrupted or not valid JSON.", "error");
-                }
-            }
-        };
-        input.click();
+    confirmAndProceed("importing data (all current data will be overwritten and unsaved changes lost)", async () => {
+        let text: string | null;
+        try {
+            text = await window.desktop.openBackup();
+        } catch (err) {
+            console.error("Error reading file:", err);
+            showToast("Could not read that file.", "error");
+            return;
+        }
+        if (text === null) return; // dialog cancelled
+        importBackupText(text);
     });
 }
 
-async function handleExportData() {
+function importBackupText(text: string) {
     try {
-        const stateToExport: Partial<AppState> = {
-            bikes: appState.bikes,
-            tracks: appState.tracks,
-            settings: appState.settings,
-            selectedBikeId: appState.selectedBikeId,
-            selectedTrackId: appState.selectedTrackId,
-            currentTrackCondition: appState.currentTrackCondition,
-            selectedProfileId: appState.selectedProfileId,
-            isSidebarCollapsed: appState.isSidebarCollapsed,
-            currentTheme: appState.currentTheme,
-        };
+        const defaults = getDefaultAppState();
+        const backup = parseBackup(JSON.parse(text), { bikes: defaults.bikes, tracks: defaults.tracks, theme: defaults.currentTheme });
+        appState = { ...defaults, ...backup, hasUnsavedSettingsChanges: false, stagedSettingsBeforeEdit: null };
 
-        const dataStr = JSON.stringify(stateToExport, null, 2);
-        const exportFileDefaultName = `suspension_tracker_backup_${new Date().toISOString().slice(0,10).replace(/-/g, '')}.json`;
-
-        if (Capacitor.isNativePlatform() && Filesystem) {
-            try {
-                await Filesystem.writeFile({
-                    path: exportFileDefaultName,
-                    data: dataStr,
-                    directory: Directory.Documents,
-                    encoding: Encoding.UTF8,
-                });
-                showToast(`Data exported to Documents: ${exportFileDefaultName}`, "success");
-            } catch (e) {
-                console.error("Error exporting data to device filesystem (Documents directory):", e);
-                showToast("Error exporting data to device. Check app permissions or storage.", "error", 6000);
-                triggerWebDownload(dataStr, exportFileDefaultName, "Native export failed. Saved via web download instead.");
-            }
-        } else {
-            triggerWebDownload(dataStr, exportFileDefaultName, "Data exported successfully (web download).");
-        }
-    } catch (e) {
-        console.error("Error preparing data for export:", e);
-        showToast("Error preparing data for export.", "error");
+        applyCurrentTheme();
+        saveStateToLocalStorage();
+        render();
+        showToast("Data imported successfully!", "success");
+    } catch (err) {
+        console.error("Error importing data:", err);
+        showToast("Error importing data. File might be corrupted or not valid JSON.", "error");
     }
 }
 
-function triggerWebDownload(dataStr: string, fileName: string, successMessage: string) {
-    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-    const linkElement = document.createElement('a');
-    linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', fileName);
-    document.body.appendChild(linkElement);
-    linkElement.click();
-    document.body.removeChild(linkElement);
-    showToast(successMessage, "success");
+
+async function handleExportData() {
+    try {
+        const dataStr = serializeBackup(appState);
+        const fileName = backupFileName();
+        const savedPath = await window.desktop.saveBackup(fileName, dataStr);
+        if (savedPath) {
+            showToast(`Data exported to ${savedPath}`, "success", 6000);
+        }
+    } catch (e) {
+        console.error("Error exporting data:", e);
+        showToast("Error exporting data. Check the folder is writable.", "error", 6000);
+    }
 }
 
 
@@ -2266,6 +2017,17 @@ function initApp() {
             renderHeaderActionsMenu();
         }
     }
+  });
+
+  // Dropping a backup file (e.g. one copied from an Android phone) onto the window imports it.
+  document.addEventListener('dragover', (e) => e.preventDefault());
+  document.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const file = e.dataTransfer?.files?.[0];
+    if (!file || !file.name.toLowerCase().endsWith('.json')) return;
+    confirmAndProceed("importing data (all current data will be overwritten and unsaved changes lost)", async () => {
+        importBackupText(await file.text());
+    });
   });
 
   window.addEventListener('beforeunload', (event) => {

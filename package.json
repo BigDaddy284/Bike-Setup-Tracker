@@ -1,0 +1,65 @@
+{
+  "name": "bike-setup-tracker-windows",
+  "productName": "Bike Setup Tracker",
+  "version": "2.0.0",
+  "description": "Windows desktop version of Bike Setup Tracker. Reads and writes the same backup files as the Android app.",
+  "private": true,
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "build:renderer": "vite build",
+    "build:electron": "tsc -p tsconfig.electron.json",
+    "build": "npm run build:renderer && npm run build:electron",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.electron.json --noEmit",
+    "test": "vitest run",
+    "start": "npm run build && electron .",
+    "dist:win": "npm run build && electron-builder --win --publish never"
+  },
+  "build": {
+    "appId": "com.gizmx.bikesetuptracker",
+    "productName": "Bike Setup Tracker",
+    "files": [
+      "dist/**",
+      "dist-electron/**",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-portable.${ext}"
+    },
+    "publish": null
+  },
+  "devDependencies": {
+    "@fontsource/inter": "^5.3.0",
+    "@fortawesome/fontawesome-free": "^6.7.2",
+    "@types/node": "^22.20.5",
+    "electron": "^38.8.6",
+    "electron-builder": "^26.15.3",
+    "typescript": "~5.8",
+    "vite": "^6.4.4",
+    "vitest": "^3.2.7"
+  },
+  "author": "GizMx Race Development"
+}
