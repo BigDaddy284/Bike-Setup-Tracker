@@ -190,7 +190,7 @@ npm start          # builds and runs the desktop app
 npm run dist:win   # builds both Windows .exe files into the release folder
 ```
 
-`npm run dist:win` works on Windows as it is. On Linux or macOS it also needs [Wine](https://www.winehq.org). Every push to GitHub builds both `.exe` files on a Windows machine with GitHub Actions ([`build-windows.yml`](.github/workflows/build-windows.yml)), and you can download them from the workflow run's *Artifacts*. Pushing a version tag such as `v2.0.1` also publishes a release with the APK and both `.exe` files.
+`npm run dist:win` works on Windows as it is. On Linux or macOS it also needs [Wine](https://www.winehq.org). Every push to GitHub builds both `.exe` files on a Windows machine with GitHub Actions ([`build-windows.yml`](.github/workflows/build-windows.yml)), and you can download them from the workflow run's *Artifacts*. Publishing a release on GitHub (or pushing a version tag such as `v2.0.1`) builds the `.exe` files and attaches them to the release, together with the APK from [`android/`](android).
 
 ### Project layout
 
