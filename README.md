@@ -190,7 +190,7 @@ npm start          # builds and runs the desktop app
 npm run dist:win   # builds both Windows .exe files into the release folder
 ```
 
-`npm run dist:win` works on Windows as it is. On Linux or macOS it also needs [Wine](https://www.winehq.org). Every push to GitHub builds both `.exe` files on a Windows machine with GitHub Actions ([`build-windows.yml`](.github/workflows/build-windows.yml)), and you can download them from the workflow run's *Artifacts*.
+`npm run dist:win` works on Windows as it is. On Linux or macOS it also needs [Wine](https://www.winehq.org). Every push to GitHub builds both `.exe` files on a Windows machine with GitHub Actions ([`build-windows.yml`](.github/workflows/build-windows.yml)), and you can download them from the workflow run's *Artifacts*. Pushing a version tag such as `v2.0.1` also publishes a release with the APK and both `.exe` files.
 
 ### Project layout
 
@@ -201,6 +201,7 @@ npm run dist:win   # builds both Windows .exe files into the release folder
 | [`electron/`](electron) | The Windows desktop shell: the window, the Open and Save dialogs, and opening map links in your browser |
 | [`test/`](test) | Backup format tests and a sample Android backup |
 | [`docs/images/`](docs/images) | Screenshots for this page |
+| [`android/`](android) | The current Android APK, attached to each release |
 | [`legacy/`](legacy) | APKs of the older Suspension Tracker V1 to V3 |
 
 ## License
